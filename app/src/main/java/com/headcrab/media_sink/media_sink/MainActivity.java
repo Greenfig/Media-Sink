@@ -1,22 +1,26 @@
 package com.headcrab.media_sink.media_sink;
 
+import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import com.headcrab.media_sink.media_sink.MusicService.MusicBinder;
 
 //new
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.ArrayList;
-import android.widget.ListView;
-import android.net.Uri;
-import android.database.Cursor;
 
-import javax.xml.datatype.Duration;
+import android.view.View;
+import android.widget.ListView;
+import android.database.Cursor;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -25,6 +29,28 @@ public class MainActivity extends ActionBarActivity {
     private ArrayList<Song> songList;
     //song View
     private ListView songView;
+
+    private MusicService musicServ;
+    private Intent playIntent;
+    private boolean musicBound = false;
+
+    //-------------------------service
+    private ServiceConnection musicConnection = new ServiceConnection(){
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service){
+            MusicBinder binder = (MusicBinder)service;
+            //get service
+            musicServ = binder.getService();
+            //pass list
+            musicServ.populateSongList(songList);
+            musicBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name){
+            musicBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,8 +73,25 @@ public class MainActivity extends ActionBarActivity {
 
         SongAdapter songAdapter = new SongAdapter(this, songList);
         songView.setAdapter(songAdapter);
+
+
+        /*//instantiate music service and pass song list
+        musicServ = new MusicService();
+        musicServ.populateSongList(songList);*/
     }
 
+
+
+
+    @Override
+    public void onStart(){
+        super.onStart();
+        if(playIntent==null){
+            playIntent = new Intent(this, MusicService.class);
+            bindService(playIntent, musicConnection, Context.BIND_AUTO_CREATE);
+            startService(playIntent);
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -59,17 +102,28 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        /*if (id == R.id.action_settings) {
-            return true;
-        }*/
-
+        switch (item.getItemId()) {
+            case R.id.action_shuffle:
+                break;
+            case R.id.action_end:
+                stopService(playIntent);
+                musicServ = null;
+                System.exit(0);
+                break;
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onDestroy(){
+        stopService(playIntent);
+        musicServ=null;
+        super.onDestroy();
+    }
+
+    public void songPicked(View view){
+        musicServ.setSong(Integer.parseInt(view.getTag().toString()));
+        musicServ.playSong();
     }
 
     //-----helper
@@ -77,7 +131,7 @@ public class MainActivity extends ActionBarActivity {
     public void getSongList(){
         //get song info
         ContentResolver musicResolver = getContentResolver();
-        //Uri musicUri = Uri.parse(Environment.getExternalStorageDirectory().toString() + "/Media-Sink/Music/Sheepy&Proximity_Music");
+
         String[] musicUri = new String[]{"%Media-Sink/Music/Sheepy&Proximity_Music%"};
         Cursor musicCursor = musicResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null, MediaStore.Audio.Media.DATA + " like ? ",
                 musicUri, null);
