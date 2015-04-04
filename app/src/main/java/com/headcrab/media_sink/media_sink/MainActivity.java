@@ -1,5 +1,6 @@
 package com.headcrab.media_sink.media_sink;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -7,11 +8,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.provider.MediaStore;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import com.headcrab.media_sink.media_sink.MusicService.MusicBinder;
+import android.widget.MediaController.MediaPlayerControl;
 
 //new
 import java.util.Comparator;
@@ -23,7 +25,7 @@ import android.widget.ListView;
 import android.database.Cursor;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends Activity implements MediaPlayerControl {
 
     //array store of songs
     private ArrayList<Song> songList;
@@ -33,6 +35,9 @@ public class MainActivity extends ActionBarActivity {
     private MusicService musicServ;
     private Intent playIntent;
     private boolean musicBound = false;
+    private MusicController controller;
+
+    private  boolean paused = false, playbackPaused = false;
 
     //-------------------------service
     private ServiceConnection musicConnection = new ServiceConnection(){
@@ -74,14 +79,8 @@ public class MainActivity extends ActionBarActivity {
         SongAdapter songAdapter = new SongAdapter(this, songList);
         songView.setAdapter(songAdapter);
 
-
-        /*//instantiate music service and pass song list
-        musicServ = new MusicService();
-        musicServ.populateSongList(songList);*/
+        setController();
     }
-
-
-
 
     @Override
     public void onStart(){
@@ -96,7 +95,9 @@ public class MainActivity extends ActionBarActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        //--------
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
         return true;
     }
 
@@ -104,6 +105,7 @@ public class MainActivity extends ActionBarActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_shuffle:
+                musicServ.setShuffle();
                 break;
             case R.id.action_end:
                 stopService(playIntent);
@@ -112,6 +114,27 @@ public class MainActivity extends ActionBarActivity {
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+        paused = true;
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        if(paused){
+            setController();
+            paused=false;
+        }
+    }
+
+    @Override
+    protected void onStop(){
+        controller.hide();
+        super.onStop();
     }
 
     @Override
@@ -124,6 +147,11 @@ public class MainActivity extends ActionBarActivity {
     public void songPicked(View view){
         musicServ.setSong(Integer.parseInt(view.getTag().toString()));
         musicServ.playSong();
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
     }
 
     //-----helper
@@ -132,7 +160,7 @@ public class MainActivity extends ActionBarActivity {
         //get song info
         ContentResolver musicResolver = getContentResolver();
 
-        String[] musicUri = new String[]{"%Media-Sink/Music/Sheepy&Proximity_Music%"};
+        String[] musicUri = new String[]{"%Media-Sink/Music%"};
         Cursor musicCursor = musicResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null, MediaStore.Audio.Media.DATA + " like ? ",
                 musicUri, null);
 
@@ -169,5 +197,119 @@ public class MainActivity extends ActionBarActivity {
             return String.valueOf(minutes) + ":" + String.valueOf(seconds);
         }
 
+    }
+
+    /*
+     *MEDIA PLAYER CONTROLLER METHODS
+     */
+
+    @Override
+    public void start() {
+        musicServ.go();
+    }
+
+    @Override
+    public void pause() {
+        playbackPaused = true;
+        musicServ.pausePlayer();
+    }
+
+    @Override
+    public int getDuration() {
+        if(musicServ != null && musicBound && musicServ.isPng()){
+            return musicServ.getDur();
+        }
+        else {
+            return 0;
+        }
+    }
+
+    @Override
+    public int getCurrentPosition() {
+        if(musicServ != null && musicBound && musicServ.isPng()){
+            return musicServ.getPosn();
+        }
+        else{
+            return 0;
+        }
+    }
+
+    @Override
+    public void seekTo(int pos) {
+        musicServ.seek(pos);
+    }
+
+    @Override
+    public boolean isPlaying() {
+        if(musicServ != null && musicBound){
+            return musicServ.isPng();
+        }
+        return false;
+    }
+
+    @Override
+    public int getBufferPercentage() {
+        return 0;
+    }
+
+    @Override
+    public boolean canPause() {
+        return true;
+    }
+
+    @Override
+    public boolean canSeekBackward() {
+        return true;
+    }
+
+    @Override
+    public boolean canSeekForward() {
+        return true;
+    }
+
+    @Override
+    public int getAudioSessionId() {
+        return 0;
+    }
+
+    private void setController(){
+        //setup controller
+        //initialize controller
+        controller = new MusicController(this);
+
+        //set user control options
+        controller.setPrevNextListeners(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playNext();
+            }
+        }, new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                playPrevious();
+            }
+        });
+
+        controller.setMediaPlayer(this);
+        controller.setAnchorView(findViewById(R.id.song_list));
+        controller.setEnabled(true);
+    }
+
+    private void playNext(){
+        musicServ.playNext();
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
+    }
+
+    private void playPrevious(){
+        musicServ.playPrev();
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
     }
 }
