@@ -25,7 +25,7 @@ import android.widget.ListView;
 import android.database.Cursor;
 
 
-public class MainActivity extends Activity implements MediaPlayerControl {
+public class MusicList extends Activity implements MediaPlayerControl {
 
     //array store of songs
     private ArrayList<Song> songList;
@@ -60,7 +60,7 @@ public class MainActivity extends Activity implements MediaPlayerControl {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_music_list);
 
         //--------
         songView = (ListView)findViewById(R.id.song_list);
@@ -97,7 +97,7 @@ public class MainActivity extends Activity implements MediaPlayerControl {
         // Inflate the menu; this adds items to the action bar if it is present.
         //--------
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
+        inflater.inflate(R.menu.menu_music_list, menu);
         return true;
     }
 
