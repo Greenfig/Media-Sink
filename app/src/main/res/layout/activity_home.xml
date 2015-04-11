@@ -23,7 +23,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:textSize="@dimen/abc_text_size_title_material"/>
+            android:textSize="@dimen/abc_text_size_title_material"
+            android:layout_marginLeft="30dp"/>
     </LinearLayout>
 
 </RelativeLayout>
