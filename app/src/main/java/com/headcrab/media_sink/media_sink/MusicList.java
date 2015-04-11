@@ -6,6 +6,8 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.os.Bundle;
@@ -170,14 +172,17 @@ public class MusicList extends Activity implements MediaPlayerControl {
             int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
             int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+            int albumIdColumn = musicCursor.getColumnIndex(MediaStore.Audio.Albums.ALBUM_ART);
 
             do{
                 long thisId = musicCursor.getLong(idColumn);
                 String thisTitle = musicCursor.getString(titleColumn);
                 String thisArtist = musicCursor.getString(artistColumn);
                 String thisLength = setDuration(musicCursor.getString(songLColumn));
+                String thisAlbumArtPath = musicCursor.getString(albumIdColumn);
+                Bitmap thisAlbumArt = BitmapFactory.decodeFile(thisAlbumArtPath);
 
-                songList.add(new Song(thisId,thisTitle,thisArtist,thisLength));
+                songList.add(new Song(thisId,thisTitle,thisArtist,thisLength, thisAlbumArt));
             }while(musicCursor.moveToNext());
         }
         musicCursor.close();
