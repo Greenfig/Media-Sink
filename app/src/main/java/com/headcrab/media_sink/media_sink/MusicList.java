@@ -3,9 +3,13 @@ package com.headcrab.media_sink.media_sink;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.os.Bundle;
@@ -16,6 +20,8 @@ import com.headcrab.media_sink.media_sink.MusicService.MusicBinder;
 import android.widget.MediaController.MediaPlayerControl;
 
 //new
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.ArrayList;
@@ -170,14 +176,34 @@ public class MusicList extends Activity implements MediaPlayerControl {
             int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
             int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+            int albumColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
+            int albumIdColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
 
             do{
                 long thisId = musicCursor.getLong(idColumn);
                 String thisTitle = musicCursor.getString(titleColumn);
                 String thisArtist = musicCursor.getString(artistColumn);
                 String thisLength = setDuration(musicCursor.getString(songLColumn));
+                String thisAlbum = musicCursor.getString(albumColumn);
+                Long thisAlbumId = musicCursor.getLong(albumIdColumn);
 
-                songList.add(new Song(thisId,thisTitle,thisArtist,thisLength));
+                Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
+                Uri albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumIdColumn);
+
+                Bitmap thisAlbumArt = null;
+                try {
+                    thisAlbumArt = MediaStore.Images.Media.getBitmap(musicResolver, albumArtUri);
+                    thisAlbumArt = Bitmap.createScaledBitmap(thisAlbumArt, 30, 30, true);
+                } catch (FileNotFoundException exception) {
+                    exception.printStackTrace();
+                    thisAlbumArt = BitmapFactory.decodeResource(getResources(), R.drawable.play);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                //String thisAlbumArtPath = musicCursor.getString(albumIdColumn);
+                //Bitmap thisAlbumArt = BitmapFactory.decodeFile(thisAlbumArtPath);
+
+                songList.add(new Song(thisId,thisTitle,thisArtist,thisLength, thisAlbumArt));
             }while(musicCursor.moveToNext());
         }
         musicCursor.close();

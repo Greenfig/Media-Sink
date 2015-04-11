@@ -1,6 +1,7 @@
 package com.headcrab.media_sink.media_sink;
 
 
+import android.graphics.Bitmap;
 import android.util.Xml;
 
 import javax.xml.datatype.Duration;
@@ -14,16 +15,19 @@ public class Song {
     private String title;
     private String artist;
     private String songLength;
+    private Bitmap albumArt;
 
-    public Song(long songId, String songTitle, String songArtist, String songL){
+    public Song(long songId, String songTitle, String songArtist, String songL, Bitmap albumA){
         id = songId;
         title = songTitle;
         artist = songArtist;
         songLength = songL;
+        albumArt = albumA;
     }
 
     public long getId(){return id;}
     public String getTitle() {return title;}
     public String getArtist() {return artist;}
     public String getSongLength() {return songLength;}
+    public Bitmap getAlbumArt() {return albumArt;}
 }
