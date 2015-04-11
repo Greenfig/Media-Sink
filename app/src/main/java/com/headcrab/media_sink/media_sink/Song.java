@@ -2,7 +2,9 @@ package com.headcrab.media_sink.media_sink;
 
 
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.util.Xml;
+import android.widget.ImageView;
 
 import javax.xml.datatype.Duration;
 

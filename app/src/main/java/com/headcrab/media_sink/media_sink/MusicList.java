@@ -3,16 +3,18 @@ package com.headcrab.media_sink.media_sink;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.ContentResolver;
-import android.content.ContentUris;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -20,8 +22,6 @@ import com.headcrab.media_sink.media_sink.MusicService.MusicBinder;
 import android.widget.MediaController.MediaPlayerControl;
 
 //new
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.ArrayList;
@@ -165,10 +165,15 @@ public class MusicList extends Activity implements MediaPlayerControl {
     public void getSongList(){
         //get song info
         ContentResolver musicResolver = getContentResolver();
+        //get album art
+        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+        byte[] rawArt;
+        BitmapFactory.Options bfo = new BitmapFactory.Options();
 
         String[] musicUri = new String[]{"%Media-Sink/Music%"};
         Cursor musicCursor = musicResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null, MediaStore.Audio.Media.DATA + " like ? ",
                 musicUri, null);
+
 
         //Iterate
         if(musicCursor!=null && musicCursor.moveToFirst()){
@@ -177,7 +182,7 @@ public class MusicList extends Activity implements MediaPlayerControl {
             int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
             int albumColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
-            int albumIdColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
+            long albumIdColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
 
             do{
                 long thisId = musicCursor.getLong(idColumn);
@@ -185,23 +190,18 @@ public class MusicList extends Activity implements MediaPlayerControl {
                 String thisArtist = musicCursor.getString(artistColumn);
                 String thisLength = setDuration(musicCursor.getString(songLColumn));
                 String thisAlbum = musicCursor.getString(albumColumn);
-                Long thisAlbumId = musicCursor.getLong(albumIdColumn);
-
-                Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
-                Uri albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumIdColumn);
-
+                Long thisAlbumId = albumIdColumn;
+                String path = musicCursor.getString(musicCursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+                Uri songPath = Uri.parse(path);
                 Bitmap thisAlbumArt = null;
-                try {
-                    thisAlbumArt = MediaStore.Images.Media.getBitmap(musicResolver, albumArtUri);
-                    thisAlbumArt = Bitmap.createScaledBitmap(thisAlbumArt, 30, 30, true);
-                } catch (FileNotFoundException exception) {
-                    exception.printStackTrace();
+
+                metadataRetriever.setDataSource(getApplicationContext(), songPath);
+                rawArt = metadataRetriever.getEmbeddedPicture();
+                try{
+                    thisAlbumArt = BitmapFactory.decodeByteArray(rawArt, 0 , rawArt.length,bfo);
+                }catch( NullPointerException ex){
                     thisAlbumArt = BitmapFactory.decodeResource(getResources(), R.drawable.play);
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
-                //String thisAlbumArtPath = musicCursor.getString(albumIdColumn);
-                //Bitmap thisAlbumArt = BitmapFactory.decodeFile(thisAlbumArtPath);
 
                 songList.add(new Song(thisId,thisTitle,thisArtist,thisLength, thisAlbumArt));
             }while(musicCursor.moveToNext());
