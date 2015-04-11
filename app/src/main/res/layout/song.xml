@@ -9,12 +9,13 @@
 
     <RelativeLayout
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:padding="2dp">
         <ImageView
             android:id="@+id/song_image"
-            android:src="@drawable/play"
             android:layout_width="50dp"
-            android:layout_height="50dp" />
+            android:layout_height="50dp"
+            android:layout_centerVertical="true"/>
         <TextView
             android:text="Song Title here"
             android:id="@+id/song_title"
