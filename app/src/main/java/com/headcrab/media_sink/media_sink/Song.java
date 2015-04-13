@@ -17,19 +17,19 @@ public class Song {
     private String title;
     private String artist;
     private String songLength;
-    private Bitmap albumArt;
+    private Uri songPath;
 
-    public Song(long songId, String songTitle, String songArtist, String songL, Bitmap albumA){
+    public Song(long songId, String songTitle, String songArtist, String songL, Uri path){
         id = songId;
         title = songTitle;
         artist = songArtist;
         songLength = songL;
-        albumArt = albumA;
+        songPath = path;
     }
 
     public long getId(){return id;}
     public String getTitle() {return title;}
     public String getArtist() {return artist;}
     public String getSongLength() {return songLength;}
-    public Bitmap getAlbumArt() {return albumArt;}
+    public Uri getSongPath() {return songPath;}
 }

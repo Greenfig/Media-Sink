@@ -7,14 +7,11 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.media.MediaMetadataRetriever;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -22,6 +19,7 @@ import com.headcrab.media_sink.media_sink.MusicService.MusicBinder;
 import android.widget.MediaController.MediaPlayerControl;
 
 //new
+import java.sql.SQLException;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.ArrayList;
@@ -42,6 +40,7 @@ public class MusicList extends Activity implements MediaPlayerControl {
     private Intent playIntent;
     private boolean musicBound = false;
     private MusicController controller;
+    private DBAdapter db;
 
     private  boolean paused = false, playbackPaused = false;
 
@@ -55,6 +54,7 @@ public class MusicList extends Activity implements MediaPlayerControl {
             //pass list
             musicServ.populateSongList(songList);
             musicBound = true;
+            musicServ.setDb(db);
         }
 
         @Override
@@ -72,17 +72,25 @@ public class MusicList extends Activity implements MediaPlayerControl {
         songView = (ListView)findViewById(R.id.song_list);
         songList = new ArrayList<>();
 
-        getSongList();
+        //check for songs database
+        //if null
+        db = new DBAdapter(this);
+        try {
+            db.open();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        //DELETE DB--------------------------------------------------------------------------------------------
+        //db.dropTable();
+        if(!db.hasTable()){
+            db.createTable();
+            getSongList(db);
+        }
 
+        songList = db.getAllSongs();
 
-        //--------Sort songs alphabetically
-        Collections.sort(songList, new Comparator<Song>(){
-            public int compare(Song a, Song b){
-                return a.getTitle().compareTo(b.getTitle());
-            }
-        });
-
-        SongAdapter songAdapter = new SongAdapter(this, songList);
+        db.close();
+        SongAdapter songAdapter = new SongAdapter(this, songList,db);
         songView.setAdapter(songAdapter);
 
         setController();
@@ -122,10 +130,16 @@ public class MusicList extends Activity implements MediaPlayerControl {
         return super.onOptionsItemSelected(item);
     }
 
+
+
     @Override
     protected void onPause(){
         super.onPause();
         paused = true;
+        if(musicBound){
+            unbindService(musicConnection);
+            musicBound = false;
+        }
     }
 
     @Override
@@ -145,9 +159,13 @@ public class MusicList extends Activity implements MediaPlayerControl {
 
     @Override
     public void onDestroy(){
+        super.onDestroy();
+        if(musicBound){
+            unbindService(musicConnection);
+            musicBound = false;
+        }
         stopService(playIntent);
         musicServ=null;
-        super.onDestroy();
     }
 
     public void songPicked(View view){
@@ -162,29 +180,21 @@ public class MusicList extends Activity implements MediaPlayerControl {
 
     //-----helper
     //---Get media and iterate through them
-    public void getSongList(){
-        //get song info
+    public void getSongList(DBAdapter db){
         ContentResolver musicResolver = getContentResolver();
-        //get album art
-        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-        byte[] rawArt;
-        BitmapFactory.Options bfo = new BitmapFactory.Options();
 
         String[] musicUri = new String[]{"%Media-Sink/Music%"};
         Cursor musicCursor = musicResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null, MediaStore.Audio.Media.DATA + " like ? ",
-                musicUri, null);
-
-
+                    musicUri, null);
         //Iterate
-        if(musicCursor!=null && musicCursor.moveToFirst()){
+        if (musicCursor != null && musicCursor.moveToFirst()) {
             int titleColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
             int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
             int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
             int songLColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
             int albumColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
             long albumIdColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
-
-            do{
+            do {
                 long thisId = musicCursor.getLong(idColumn);
                 String thisTitle = musicCursor.getString(titleColumn);
                 String thisArtist = musicCursor.getString(artistColumn);
@@ -193,18 +203,10 @@ public class MusicList extends Activity implements MediaPlayerControl {
                 Long thisAlbumId = albumIdColumn;
                 String path = musicCursor.getString(musicCursor.getColumnIndex(MediaStore.Audio.Media.DATA));
                 Uri songPath = Uri.parse(path);
-                Bitmap thisAlbumArt = null;
 
-                metadataRetriever.setDataSource(getApplicationContext(), songPath);
-                rawArt = metadataRetriever.getEmbeddedPicture();
-                try{
-                    thisAlbumArt = BitmapFactory.decodeByteArray(rawArt, 0 , rawArt.length,bfo);
-                }catch( NullPointerException ex){
-                    thisAlbumArt = BitmapFactory.decodeResource(getResources(), R.drawable.play);
-                }
-
-                songList.add(new Song(thisId,thisTitle,thisArtist,thisLength, thisAlbumArt));
-            }while(musicCursor.moveToNext());
+                //songList.add(new Song(thisId, thisTitle, thisArtist, thisLength, songPath));
+                db.insertSong(thisId, thisTitle, thisArtist, thisLength,songPath);
+            } while (musicCursor.moveToNext());
         }
         musicCursor.close();
     }

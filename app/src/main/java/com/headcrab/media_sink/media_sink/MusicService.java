@@ -37,6 +37,8 @@ public class MusicService extends Service implements
     private boolean shuffle = false;
     private Random rand;
 
+    private DBAdapter db;
+
 
     public void onCreate(){
         super.onCreate();
@@ -214,5 +216,9 @@ public class MusicService extends Service implements
         else{
             shuffle = true;
         }
+    }
+
+    public void setDb(DBAdapter d){
+        db = d;
     }
 }
